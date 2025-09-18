@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gráfica Cypreste - Assistente Virtual</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b071a;
+        }
+        .chat-container-main {
+            display: flex;
+            height: 100vh; /* Ajustado para ocupar a tela toda */
+            max-height: 100vh;
+            width: 100vw;
+            margin: auto;
+            border-radius: 0; /* Removido para tela cheia */
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+            background-color: #1e144a;
+        }
+        .sidebar {
+            background-image: linear-gradient(to bottom, #4c66ff, #6a4cff);
+            color: #d1d5db;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+            width: 80px; /* Inicia colapsada */
+            padding: 2rem 0;
+            align-items: center;
+        }
+        .sidebar:hover {
+            width: 250px;
+            align-items: initial;
+            padding: 2rem 1.5rem;
+        }
+        .sidebar .sidebar-item span {
+            opacity: 0;
+            width: 0;
+            margin-left: 0;
+            transition: opacity 0.3s, width 0.3s;
+        }
+        .sidebar:hover .sidebar-item span {
+            opacity: 1;
+            width: auto;
+            margin-left: 0.75rem;
+        }
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            overflow: hidden;
+            white-space: nowrap;
+            margin-bottom: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            color: #d1d5db;
+        }
+        .sidebar-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            transform: scale(1.05);
+        }
+        .sidebar-item img, .sidebar-item i {
+            width: 1.5rem;
+            height: 1.5rem;
+            text-align: center;
+            flex-shrink: 0; /* Impede que o ícone encolha */
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #2a205a;
+            position: relative;
+        }
+        .chat-bubble-user {
+            background-color: #4c66ff;
+            color: #ffffff;
+            align-self: flex-end;
+            border-radius: 1rem 1rem 0.25rem 1rem;
+        }
+        .chat-bubble-ai {
+            background-color: #3b3386;
+            color: #ffffff;
+            align-self: flex-start;
+            border-radius: 1rem 1rem 1rem 0.25rem;
+        }
+        .chat-bubble-quote {
+            background-color: #3b3386;
+            color: #ffffff;
+            align-self: flex-start;
+            border-radius: 1rem;
+            max-width: 90%;
+        }
+        .quote-button {
+            background-color: #1a113a; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; margin-top: 0.5rem; cursor: pointer;
+            transition: background-color 0.2s; display: inline-block; font-weight: 600;
+        }
+        .quote-button:hover { background-color: #0b071a; }
+        .chat-bubble {
+            padding: 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1-px rgba(0, 0, 0, 0.06);
+        }
+        #typing-indicator {
+            background-color: #3b3386; padding: 0.75rem 1rem; border-radius: 1.25rem; width: fit-content; margin-top: 0.5rem;
+            display: flex; align-items: center; color: #d1d5db;
+        }
+        #typing-indicator span {
+            display: inline-block; width: 8px; height: 8px; background-color: #9ca3af;
+            border-radius: 50%; margin-right: 4px; animation: bounce 1s infinite;
+        }
+        #typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        #typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-8px); } }
+        .generated-image { max-width: 100%; border-radius: 12px; margin-top: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .logo-container { margin-bottom: 2rem; text-align: center; }
+        .main-header {
+            padding: 1rem 1.5rem; background-color: #1e144a; border-bottom: 1px solid #2a205a;
+            display: flex; align-items: center; justify-content: space-between; color: #ffffff;
+        }
+        .menu-logo { width: 4rem; height: auto; margin: 0 auto 1.5rem; }
+        .form-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(11, 7, 26, 0.8); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center; z-index: 30;
+        }
+        .form-container {
+            width: 90%; max-width: 800px; background-color: #3b3386;
+            border-radius: 1rem; padding: 2rem; box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3);
+            max-height: 90vh; overflow-y: auto; position: relative;
+        }
+        .briefing-form-section { display: none; }
+        .briefing-form-section.active { display: block; }
+        @media (max-width: 768px) {
+            .chat-container-main { flex-direction: column; height: 100vh; border-radius: 0; }
+            .sidebar { display: none; }
+            .main-content { height: 100%; }
+        }
+        .mobile-nav {
+            display: none; position: fixed; bottom: 0; left: 0; width: 100%;
+            background-color: #1e144a; color: white; padding: 0.5rem 0;
+            justify-content: space-around; align-items: center;
+            border-top: 1px solid #2a205a; z-index: 50;
+        }
+        @media (max-width: 768px) {
+            .mobile-nav { display: flex; }
+            #chat-container { padding-bottom: 6rem; /* Espaço para o nav móvel */}
+        }
+        .settings-menu {
+            position: absolute; top: 4rem; right: 1.5rem; width: 200px;
+            background-color: #3b3386; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 50; display: none; color: white;
+        }
+        .settings-menu.show { display: block; }
+        .settings-item {
+            padding: 1rem; display: flex; align-items: center; cursor: pointer;
+            transition: background-color 0.2s; border-bottom: 1px solid #4a3f8f;
+        }
+        .settings-item:last-child { border-bottom: none; }
+        .settings-item:hover { background-color: #4a3f8f; }
+        .settings-item i { margin-right: 1rem; color: #d1d5db; }
+        .settings-item span { font-weight: 500; }
+        .search-result-item {
+            background-color: #2a205a; padding: 1rem; border-radius: 0.5rem;
+            border: 1px solid #4a3f8f; transition: background-color 0.2s;
+        }
+        .search-result-item:hover { background-color: #4a3f8f; }
+    </style>
+</head>
+<body class="bg-[#0b071a] antialiased">
+
+<div class="chat-container-main">
+
+    <aside class="sidebar hidden md:flex">
+        <div class="logo-container">
+            <img src="https://i.ibb.co/6y4TzT8/logofavvv.jpg" alt="Logo Gráfica Cypreste" class="menu-logo">
+        </div>
+        <nav class="flex-1 text-white">
+            <div class="sidebar-item" onclick="handlePresentationRequest()">
+                <img src="https://i.ibb.co/3s7k7jC/cartao-de-visitas.png" alt="Icone Serviços">
+                <span>Serviços (PDF)</span>
+            </div>
+            <div class="sidebar-item" onclick="handleMaterialsGuide()">
+                <img src="https://i.ibb.co/y4Y2Qv7/designer-de-web.png" alt="Icone Materiais">
+                <span>Guia de Materiais</span>
+            </div>
+            <div class="sidebar-item" onclick="handleOrderStatus()">
+                <img src="https://i.ibb.co/Yc5cZgC/localizacao-da-pessoa-ao-vivo.png" alt="Icone Rastrear Pedido">
+                <span>Rastrear Pedido</span>
+            </div>
+            <div class="sidebar-item" onclick="showBriefingForm()">
+                <img src="https://i.ibb.co/K79hH4y/designer-grafico.png" alt="Icone Briefing">
+                <span>Briefing de Arte</span>
+            </div>
+            <div class="sidebar-item" onclick="showQuoteForm()">
+                <img src="https://i.ibb.co/qD4n7P2/cliente.png" alt="Icone Orçamento">
+                <span>Gerar Orçamento</span>
+            </div>
+        </nav>
+        <div class="mt-auto">
+            <a href="https://www.instagram.com/grafica_cypreste/" target="_blank" class="sidebar-item">
+                <i class="fa-brands fa-instagram"></i>
+                <span>Instagram</span>
+            </a>
+            <div class="text-center text-sm text-gray-400 p-4">
+                <img src="https://i.ibb.co/g3n8J1y/Cypra.png" alt="Cypra" class="h-16 mx-auto mb-2">
+                <p>Cypra v1.0</p>
+            </div>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <header class="main-header">
+            <h2 class="text-xl font-bold">Assistente Virtual Cypra</h2>
+            <button id="settings-btn" class="text-gray-400 hover:text-white transition-colors text-xl p-2">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div id="settings-menu" class="settings-menu">
+                <div class="settings-item">
+                    <i class="fa-solid fa-moon"></i>
+                    <span>Modo Escuro</span>
+                </div>
+                <div class="settings-item">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Sair</span>
+                </div>
+            </div>
+        </header>
+
+        <main id="chat-container" class="flex-1 p-6 overflow-y-auto flex flex-col space-y-4">
+            </main>
+
+        <div class="bg-[#1a113a] p-4 border-t border-[#2a205a]">
+            <div class="flex items-center space-x-2">
+                <input type="text" id="user-input" class="flex-1 p-3 rounded-full border border-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors bg-[#2a205a] text-white" placeholder="Digite sua mensagem...">
+                <button id="send-btn" class="bg-purple-600 text-white p-3 rounded-full w-12 h-12 flex items-center justify-center transition-colors hover:bg-purple-700">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="form-overlay" class="form-overlay">
+        <div class="form-container">
+            <button class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300" onclick="closeForm()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <form id="briefing-form" onsubmit="event.preventDefault(); submitBriefingForm();" style="display: none;">
+                <div class="briefing-form-section active" id="briefing-form-step-1">
+                    <h2 class="text-2xl font-bold text-white mb-4">Informações do Cliente</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="client-name" class="block text-gray-200 mb-1">Nome Completo</label>
+                            <input type="text" id="client-name" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" required>
+                        </div>
+                        <div>
+                            <label for="client-whatsapp" class="block text-gray-200 mb-1">WhatsApp</label>
+                            <input type="tel" id="client-whatsapp" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" required>
+                        </div>
+                    </div>
+                    <button type="button" class="mt-6 w-full bg-purple-600 text-white py-3 px-6 rounded-md hover:bg-purple-700 transition" onclick="showFormStep(2)">Próximo</button>
+                </div>
+
+                <div class="briefing-form-section" id="briefing-form-step-2">
+                    <h2 class="text-2xl font-bold text-white mb-4">Detalhes do Projeto</h2>
+                    <div class="space-y-4">
+                         <div>
+                            <label for="project-type" class="block text-gray-200 mb-1">Tipo de Serviço</label>
+                            <select id="project-type" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" required onchange="toggleLogoFields()">
+                                <option value="" disabled selected>Selecione o serviço...</option>
+                                <option value="Cartão de Visita">Cartão de Visita</option>
+                                <option value="Panfleto">Panfleto</option>
+                                <option value="Banner">Banner</option>
+                                <option value="Adesivo">Adesivo</option>
+                                <option value="Logo">Criação de Logo</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+                        
+                        <div id="logo-fields" style="display: none;" class="space-y-4">
+                            <hr class="border-gray-500 my-4">
+                            <h3 class="text-xl font-bold text-white flex items-center mb-2"><i class="fa-solid fa-list-check text-purple-400 mr-2"></i>Informações para a Logo</h3>
+                             <div>
+                                <label for="brand-name" class="block text-gray-200 mb-1">Nome da Marca <i class="fa-solid fa-star-of-life text-yellow-300 ml-1 text-xs"></i></label>
+                                <input type="text" id="brand-name" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Gráfica Cypreste">
+                            </div>
+                            <div>
+                                <label for="brand-slogan" class="block text-gray-200 mb-1">Slogan (opcional)</label>
+                                <input type="text" id="brand-slogan" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Impressão de alta qualidade">
+                            </div>
+                            <div>
+                                <label for="area-of-operation" class="block text-gray-200 mb-1">Área de Atuação</label>
+                                <input type="text" id="area-of-operation" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Impressão, design, comunicação visual">
+                            </div>
+                            <div>
+                                <label for="target-audience" class="block text-gray-200 mb-1">Público-alvo</label>
+                                <input type="text" id="target-audience" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Pequenas empresas, jovens empreendedores">
+                            </div>
+                            <div>
+                                <label for="desired-style" class="block text-gray-200 mb-1">Estilo Desejado</label>
+                                <textarea id="desired-style" rows="2" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Minimalista, moderno, vintage, divertido"></textarea>
+                            </div>
+                            <div>
+                                <label for="icons-symbols" class="block text-gray-200 mb-1">Símbolos ou Ícones</label>
+                                <input type="text" id="icons-symbols" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Círculo, folha, impressora">
+                            </div>
+                            <div>
+                                <label for="what-to-avoid" class="block text-gray-200 mb-1">O que evitar (cores, formas)</label>
+                                <input type="text" id="what-to-avoid" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Cores escuras, formas muito complexas">
+                            </div>
+                            <hr class="border-gray-500 my-4">
+                        </div>
+
+                        <div>
+                            <label for="project-description" class="block text-gray-200 mb-1">Descrição do Projeto <i class="fa-solid fa-star-of-life text-yellow-300 ml-1 text-xs"></i></label>
+                            <textarea id="project-description" rows="4" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" required></textarea>
+                        </div>
+                        
+                        <div>
+                            <label for="project-colors" class="block text-gray-200 mb-1">Cores Desejadas</label>
+                            <input type="text" id="project-colors" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: azul, dourado, branco">
+                        </div>
+                        <div>
+                            <label for="reference-image-url" class="block text-gray-200 mb-1">URL de Imagem de Referência (opcional)</label>
+                            <input type="url" id="reference-image-url" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Opcional: link para uma imagem que te inspire">
+                        </div>
+                    </div>
+                    <div class="flex mt-6 space-x-4">
+                        <button type="button" class="flex-1 bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 transition" onclick="showFormStep(1)">Voltar</button>
+                        <button type="button" class="flex-1 bg-purple-600 text-white py-3 px-6 rounded-md hover:bg-purple-700 transition" onclick="showFormStep(3)">Próximo</button>
+                    </div>
+                </div>
+
+                <div class="briefing-form-section" id="briefing-form-step-3">
+                    <h2 class="text-2xl font-bold text-white mb-4">Tem alguma arte de referência?</h2>
+                    <p class="text-gray-300 mb-4">Busque em nosso banco de artes por sua profissão para ver alguns modelos.</p>
+                     <div class="relative flex space-x-2">
+                        <input type="text" id="profissao-input" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" placeholder="Ex: Advogado, Fotógrafo...">
+                        <button type="button" class="bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition" onclick="searchForProfession()">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </button>
+                    </div>
+                    <div id="search-results" class="mt-6 space-y-2 max-h-48 overflow-y-auto"></div>
+                    <div class="flex mt-6 space-x-4">
+                        <button type="button" class="flex-1 bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 transition" onclick="showFormStep(2)">Voltar</button>
+                        <button type="button" class="flex-1 bg-purple-600 text-white py-3 px-6 rounded-md hover:bg-purple-700 transition" onclick="showFormStep(4)">Finalizar</button>
+                    </div>
+                </div>
+
+                <div class="briefing-form-section" id="briefing-form-step-4">
+                    <h2 class="text-2xl font-bold text-white mb-4">Revise seu Briefing</h2>
+                    <div id="briefing-summary" class="bg-[#2a205a] p-4 rounded-md text-gray-200 space-y-2"></div>
+                    <div class="flex mt-6 space-x-4">
+                        <button type="button" class="flex-1 bg-gray-500 text-white py-3 px-6 rounded-md hover:bg-gray-600 transition" onclick="showFormStep(3)">Voltar</button>
+                        <button type="submit" class="flex-1 bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 transition"><i class="fa-solid fa-paper-plane mr-2"></i>Enviar Briefing</button>
+                    </div>
+                </div>
+            </form>
+            
+            <form id="quote-form" onsubmit="event.preventDefault(); generateQuote();" style="display: none;">
+                <h2 class="text-2xl font-bold text-white mb-4">Gerar Orçamento Rápido</h2>
+                 <div class="space-y-4">
+                    <div>
+                        <label for="quote-service" class="block text-gray-200 mb-1">Serviço</label>
+                        <input type="text" id="quote-service" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" required placeholder="Ex: Cartão de Visita">
+                    </div>
+                    <div>
+                        <label for="quote-quantity" class="block text-gray-200 mb-1">Quantidade</label>
+                        <input type="number" id="quote-quantity" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500" required placeholder="Ex: 1000">
+                    </div>
+                    <div>
+                        <label for="quote-details" class="block text-gray-200 mb-1">Detalhes (Ex: papel, acabamento)</label>
+                        <textarea id="quote-details" rows="3" class="w-full p-3 rounded-md bg-[#2a205a] text-white border border-gray-600 focus:ring-purple-500"></textarea>
+                    </div>
+                    <button type="submit" class="mt-6 w-full bg-purple-600 text-white py-3 px-6 rounded-md hover:bg-purple-700 transition">Gerar Orçamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<nav class="mobile-nav">
+    <div class="mobile-nav-item" onclick="handlePresentationRequest()">
+        <img src="https://i.ibb.co/3s7k7jC/cartao-de-visitas.png" alt="Ícone Serviços"><span>Serviços</span>
+    </div>
+    <div class="mobile-nav-item" onclick="handleMaterialsGuide()">
+        <img src="https://i.ibb.co/y4Y2Qv7/designer-de-web.png" alt="Ícone Materiais"><span>Materiais</span>
+    </div>
+    <div class="mobile-nav-item" onclick="handleOrderStatus()">
+        <img src="https://i.ibb.co/Yc5cZgC/localizacao-da-pessoa-ao-vivo.png" alt="Ícone Rastrear"><span>Rastrear</span>
+    </div>
+    <div class="mobile-nav-item" onclick="showBriefingForm()">
+        <img src="https://i.ibb.co/K79hH4y/designer-grafico.png" alt="Ícone Briefing"><span>Briefing</span>
+    </div>
+    <div class="mobile-nav-item" onclick="showQuoteForm()">
+        <img src="https://i.ibb.co/qD4n7P2/cliente.png" alt="Ícone Orçamento"><span>Orçamento</span>
+    </div>
+</nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const chatContainer = document.getElementById('chat-container');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsMenu = document.getElementById('settings-menu');
+    const formOverlay = document = document.getElementById('form-overlay');
+    const briefingForm = document.getElementById('briefing-form');
+    const quoteForm = document.getElementById('quote-form');
+
+    let isTyping = false;
+    let expectingAudioConfirmation = false;
+    let audioOfferMade = false;
+    let audioMessage = "";
+    let expectingWhatsappNumber = false;
+    let lastProductRequested = null;
+    
+    // Base de Conhecimento
+    const knowledgeBase = {
+        materials: {
+            "cartão de visita": {
+                "custo-benefício": "Couchê fosco 300g.",
+                "premium": "Couchê 300g com laminação fosca e verniz localizado.",
+                "sustentável": "Reciclato 240g ou Kraft 250g.",
+            },
+            "folder": {
+                "econômico": "Couchê brilho 115g ou 150g.",
+                "elegante": "Couchê fosco 170g.",
+                "sustentável": "Reciclado 120g ou 150g.",
+            },
+            "livros": {
+                "miolo": "Offset 75g (preto e branco) ou 90g (colorido).",
+                "capa": "Supremo 250g com laminação fosca.",
+            },
+            "revistas": {
+                "miolo": "Couchê brilho 90g ou 115g.",
+                "capa": "Couchê 170g a 250g com laminação.",
+            },
+            "embalagens": {
+                "comum": "Triplex 250g a 300g.",
+                "luxo": "Supremo 300g com laminação e hot stamping.",
+                "artesanal": "Kraft 240g a 300g.",
+            },
+            "convites": {
+                "clássico": "Supremo 250g com laminação fosca.",
+                "sofisticado": "Vegetal 120g sobre Couchê 250g com hot stamping dourado.",
+                "rústico": "Kraft 240g com cordão ou fita.",
+            },
+            "sacolas": {
+                "econômica": "Kraft 200g com alça de papel torcido.",
+                "luxo": "Supremo 250g com laminação fosca e cordão de algodão.",
+            },
+            "posters": {
+                "temporário": "Couchê brilho 115g.",
+                "durável": "Couchê fosco 170g.",
+                "artístico": "Offset 150g ou Reciclado 150g.",
+            },
+            "fotos": {
+                "brilho": "Papel fotográfico 180g a 230g.",
+                "fosco": "Papel fotográfico 210g a 260g.",
+            }
+        },
+        prices: {
+            "cartão de visita": { "Couchê 300g fosco": { unit: 0.60, min: 100 }, "Couchê 300g + laminação fosca": { unit: 0.90, min: 100 }, "Kraft 250g": { unit: 0.70, min: 100 } },
+            "flyer": { "Couchê brilho 115g": { unit: 0.35, min: 500 }, "Couchê fosco 150g": { unit: 0.45, min: 500 } },
+            "folder": { "Couchê brilho 150g": { unit: 0.95, min: 500 }, "Couchê fosco 170g": { unit: 1.20, min: 500 } },
+            "revista": { "Miolo couchê 90g": { unit: 12.00, min: 100 } },
+            "livro": { "Miolo offset 75g": { unit: 25.00, min: 50 } },
+            "convite": { "Couchê fosco 250g": { unit: 1.50, min: 100 }, "Convite premium": { unit: 4.00, min: 100 } },
+            "sacola": { "Sacola pequena": { unit: 3.50, min: 100 }, "Sacola luxo média": { unit: 7.00, min: 100 } },
+            "embalagem": { "Triplex 300g": { unit: 2.20, min: 200 } },
+            "banner": { "Lona 440g": { unit: 45.00, min: 1 } },
+            "adesivo": { "Vinil branco": { unit: 1.20, min: 100 } },
+            "poster": { "Couchê brilho 170g": { unit: 3.50, min: 50 } },
+            "plotagem": { "Papel sulfite 90g": { unit: 25.00, min: 1 } },
+            "placa pvc": { "PVC 3mm": { unit: 90.00, min: 1 } }
+        },
+        services: {
+            "impressão digital": "Impressão rápida para pequenas e médias tiragens, feita direto do arquivo digital. Ideal para cartões, panfletos e convites. É ágil e permite personalização.",
+            "impressão offset": "Impressão de alta qualidade para grandes tiragens, usando chapas metálicas. Perfeita para revistas, livros e catálogos em grande escala. Oferece cores excelentes e melhor custo-benefício em grandes volumes.",
+            "grandes formatos": "Impressão digital em plotters de alta resolução para materiais grandes. Usado em banners, faixas, adesivos, placas e envelopamento de veículos. Os materiais comuns são lona e vinil.",
+            "identidade visual": "Serviços de criação de logotipo, papelaria (cartões, envelopes), manual de marca, paleta de cores e tipografia. Nosso objetivo é dar unidade visual à sua empresa. Usamos ferramentas como Illustrator, CorelDraw e Figma."
+        },
+        products: [
+            "cartões de visita", "panfletos", "flyers", "folders", "catálogos", "adesivos personalizados", "banners", "faixas", "papel timbrado", "envelopes", "convites", "brindes personalizados", "etiquetas", "embalagens", "livros", "revistas", "sacolas", "placas", "posters", "plotagem"
+        ],
+        finishing: [
+            "laminação fosca", "laminação brilho", "verniz localizado", "hot stamping", "relevo seco", "relevo americano", "corte especial", "verniz UV total", "dobras", "vincos", "encadernação"
+        ],
+        technicalTerms: {
+            "cmyk": "É o padrão de cores para impressão. As cores são formadas a partir de Ciano, Magenta, Amarelo e Preto.",
+            "rgb": "É o padrão de cores para mídias digitais (Red, Green, Blue). Precisa ser convertido para CMYK antes da impressão para evitar distorções.",
+            "sangria": "Uma área extra de segurança na arte para garantir que o corte seja perfeito e não deixe bordas brancas.",
+            "dpi": "A sigla para Dots Per Inch (pontos por polegada), que define a resolução da imagem. Para uma impressão de qualidade, o ideal é 300dpi.",
+            "pantone": "Um sistema de cores padronizadas usado para garantir que a cor seja a mesma em diferentes impressões, mesmo em papéis variados.",
+            "prova digital": "Um teste impresso para que você possa conferir a fidelidade das cores e o layout antes de produzirmos a tiragem completa."
+        }
+    };
+    
+    // Simulação de banco de dados de artes
+    const driveData = [
+        { name: "Modelo Clean para Advogados", profession: "Advogado", url: "#" },
+        { name: "Cartão Moderno para Médicos", profession: "Médico", url: "#" },
+        { name: "Flyer para Engenharia Civil", profession: "Engenheiro", url: "#" },
+        { name: "Design para Consultório de Dentista", profession: "Dentista", url: "#" },
+        { name: "Portfólio para Fotógrafos", profession: "Fotógrafo", url: "#" },
+    ];
+
+    // --- FUNÇÕES DE MENSAGENS ---
+    const appendMessage = (sender, message, type = 'text') => {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.classList.add('flex', 'w-full');
+        
+        let bubbleClass = sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai';
+        let alignment = sender === 'user' ? 'justify-end' : 'justify-start';
+
+        messageWrapper.classList.add(alignment);
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-bubble', bubbleClass);
+        messageDiv.innerHTML = message;
+        
+        chatContainer.appendChild(messageWrapper);
+        messageWrapper.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    };
+    
+    const appendImageMessage = (sender, imageUrl, text) => {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.classList.add('flex', 'w-full', 'justify-start');
+
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-bubble', 'chat-bubble-ai', 'flex-col', 'items-center', 'text-center');
+        
+        if (text) {
+            const textEl = document.createElement('p');
+            textEl.innerHTML = text;
+            messageDiv.appendChild(textEl);
+        }
+
+        const imageEl = document.createElement('img');
+        imageEl.src = imageUrl;
+        imageEl.alt = 'Imagem gerada pela IA';
+        imageEl.classList.add('generated-image');
+        messageDiv.appendChild(imageEl);
+        
+        messageWrapper.appendChild(messageDiv);
+        chatContainer.appendChild(messageWrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    };
+
+    const appendAudioMessage = (audioUrl) => {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.classList.add('flex', 'w-full', 'justify-start');
+
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('chat-bubble', 'chat-bubble-ai', 'flex-col', 'items-center', 'text-center');
+        
+        const audioEl = document.createElement('audio');
+        audioEl.controls = true;
+        audioEl.src = audioUrl;
+        
+        messageDiv.innerHTML = `
+            <p><strong>🎧 Mensagem de áudio da Cypra:</strong></p>
+            <audio controls src="${audioUrl}" class="mt-2"></audio>
+        `;
+        
+        messageWrapper.appendChild(messageDiv);
+        chatContainer.appendChild(messageWrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    };
+
+    const showTypingIndicator = () => {
+        if (isTyping) return;
+        isTyping = true;
+        const indicatorDiv = document.createElement('div');
+        indicatorDiv.id = 'typing-indicator';
+        indicatorDiv.innerHTML = `<span></span><span></span><span></span>`;
+        chatContainer.appendChild(indicatorDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    };
+
+    const removeTypingIndicator = () => {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+        isTyping = false;
+    };
+    
+    // Funções utilitárias para conversão de áudio
+    function base64ToArrayBuffer(base64) {
+        const binaryString = window.atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    function pcmToWav(pcmData, sampleRate) {
+        const pcm16 = new Int16Array(pcmData);
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+        const blockAlign = numChannels * (bitsPerSample / 8);
+        const dataSize = pcm16.length * (bitsPerSample / 8);
+        const buffer = new ArrayBuffer(44 + dataSize);
+        const view = new DataView(buffer);
+
+        // RIFF chunk
+        view.setUint32(0, 0x52494646, true); // "RIFF"
+        view.setUint32(4, 36 + dataSize, true); // file size
+        view.setUint32(8, 0x57415645, true); // "WAVE"
+
+        // fmt chunk
+        view.setUint32(12, 0x666d7420, true); // "fmt "
+        view.setUint32(16, 16, true); // chunk size
+        view.setUint16(20, 1, true); // compression code (1 = PCM)
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitsPerSample, true);
+
+        // data chunk
+        view.setUint32(36, 0x64617461, true); // "data"
+        view.setUint32(40, dataSize, true); // chunk size
+        
+        // Write PCM data
+        let offset = 44;
+        for (let i = 0; i < pcm16.length; i++) {
+            view.setInt16(offset, pcm16[i], true);
+            offset += 2;
+        }
+
+        return new Blob([view], { type: 'audio/wav' });
+    }
+
+    const speakMessage = async (text) => {
+        showTypingIndicator();
+        try {
+            const payload = {
+                contents: [{
+                    parts: [{ text: text }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: "Puck" } // Voz amigável e animada
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            
+            removeTypingIndicator();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                const pcmData = base64ToArrayBuffer(audioData);
+                const wavBlob = pcmToWav(pcmData, sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+                appendAudioMessage(audioUrl);
+            } else {
+                appendMessage('ai', 'Desculpe, não consegui gerar o áudio. Por favor, tente novamente mais tarde.');
+            }
+        } catch (error) {
+            console.error('Erro ao gerar áudio:', error);
+            removeTypingIndicator();
+            appendMessage('ai', 'Ocorreu um erro ao gerar o áudio. Por favor, tente novamente mais tarde.');
+        }
+    };
+
+    const handleSendMessage = () => {
+        const message = userInput.value.trim();
+        if (!message) {
+            return;
+        }
+        
+        appendMessage('user', message);
+        userInput.value = '';
+
+        const lowerCaseMessage = message.toLowerCase();
+
+        // Lógica de confirmação de áudio
+        if (expectingAudioConfirmation) {
+            if (lowerCaseMessage.includes('sim') || lowerCaseMessage.includes('claro') || lowerCaseMessage.includes('yes')) {
+                speakMessage(audioMessage);
+            } else {
+                appendMessage('ai', 'Tudo bem! Se precisar de algo mais, é só me chamar.');
+            }
+            expectingAudioConfirmation = false;
+            audioMessage = "";
+            return;
+        }
+
+        // Lógica de recebimento do WhatsApp
+        if (expectingWhatsappNumber) {
+            const whatsappNumber = message.replace(/[^0-9]/g, '');
+            if (whatsappNumber.length >= 8) {
+                appendMessage('ai', `Obrigado! Anotei seu número. Um de nossos especialistas entrará em contato com você via WhatsApp em breve para te dar a resposta. Tenha um ótimo dia!`);
+            } else {
+                appendMessage('ai', 'Parece que o número não está completo. Por favor, tente novamente.');
+            }
+            expectingWhatsappNumber = false;
+            return;
+        }
+
+        showTypingIndicator();
+
+        setTimeout(() => {
+            removeTypingIndicator();
+            
+            let responseText = '';
+            let askForAudio = false;
+            
+            // Helper function to normalize strings for comparison
+            const normalizeString = (str) => str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
+            const normalizedMessage = normalizeString(message);
+            
+            // Verificação de Intenção
+            const isGreeting = ['olá', 'oi', 'e aí', 'opa', 'bom dia', 'boa tarde', 'boa noite', 'tudo bem', 'tudo joia'].some(g => normalizedMessage.includes(normalizeString(g)));
+            const isLocationQuery = ['endereço', 'local', 'onde fica', 'chegar'].some(l => normalizedMessage.includes(normalizeString(l)));
+            const isHoursQuery = ['horário', 'funciona', 'aberto', 'fecha'].some(h => normalizedMessage.includes(normalizeString(h)));
+            const isQuoteQuery = ['orçamento', 'preço', 'valor', 'quanto custa', 'cotação'].some(q => normalizedMessage.includes(normalizeString(q)));
+            const isBriefingQuery = ['briefing', 'arte', 'logomarca', 'logo', 'criar logo', 'design'].some(b => normalizedMessage.includes(normalizeString(b)));
+            
+            // Verificação de Produtos e Serviços
+            const normalizedProductKeywords = Object.keys(knowledgeBase.prices).map(k => normalizeString(k));
+            let productMatch = normalizedProductKeywords.find(p => normalizedMessage.includes(p));
+            const normalizedServiceKeywords = Object.keys(knowledgeBase.services).map(k => normalizeString(k));
+            let serviceMatch = normalizedServiceKeywords.find(s => normalizedMessage.includes(s));
+            const normalizedTechnicalKeywords = Object.keys(knowledgeBase.technicalTerms).map(k => normalizeString(k));
+            let technicalMatch = normalizedTechnicalKeywords.find(t => normalizedMessage.includes(t));
+            const normalizedMaterialKeywords = Object.keys(knowledgeBase.materials).map(k => normalizeString(k));
+            let materialMatch = normalizedMaterialKeywords.find(m => normalizedMessage.includes(m));
+
+            // Respostas baseadas na intenção
+            if (lastProductRequested && !isNaN(message.trim())) {
+                const quantity = parseInt(message.trim(), 10);
+                const originalProductKey = lastProductRequested;
+                const priceInfo = knowledgeBase.prices[originalProductKey];
+                let priceMessage = `Entendido! Para **${quantity} unidades de ${originalProductKey}**, aqui estão as opções de orçamento:<br><br>`;
+                for (const type in priceInfo) {
+                    const total = (priceInfo[type].unit * quantity).toFixed(2).replace('.', ',');
+                    priceMessage += `**${type}:** R$ ${total}.`;
+                    const materialDescription = knowledgeBase.materials[originalProductKey] ? knowledgeBase.materials[originalProductKey][type.toLowerCase().replace('+', ' com')] : '';
+                    if (materialDescription) {
+                        priceMessage += ` (${materialDescription})`;
+                    }
+                    priceMessage += `<br>`;
+                }
+                responseText = priceMessage + `<br>Qual tipo você procura? Se precisar, posso te ajudar a escolher o acabamento ideal.`;
+                lastProductRequested = null;
+            } else if (isGreeting) {
+                const now = new Date();
+                const currentHour = now.getHours();
+                let timeGreeting = '';
+                if (currentHour >= 6 && currentHour < 12) {
+                    timeGreeting = 'Bom dia';
+                } else if (currentHour >= 12 && currentHour < 18) {
+                    timeGreeting = 'Boa tarde';
+                } else {
+                    timeGreeting = 'Boa noite';
+                }
+                responseText = `${timeGreeting}! 👋 Que bom te ver por aqui. Sou a Cypra, sua assistente virtual na Gráfica Cypreste. Em que posso te ajudar hoje?`;
+            } else if (isHoursQuery) {
+                responseText = 'O nosso horário de atendimento é de **segunda a sexta-feira, das 9h às 18h**. Você pode falar comigo a qualquer momento, mas a nossa equipe de produção estará de volta nesse horário. Posso te ajudar com outra coisa?';
+            } else if (isLocationQuery) {
+                responseText = `Estamos em Vila Velha! O nosso endereço é:<br><br><strong>R. Cel. Sodré, 518 - Centro de Vila Velha, Vila Velha - ES, 29100-080</strong><br><br>O nosso telefone para contato é: (27) 3239-1415.<br><br>Se quiser ver a rota no mapa, é só clicar aqui: <a href="https://www.google.com/maps/place/Gr%C3%A1fica+Cypreste,+Carimbo,+Brindes,+Embalagens,+Sacolas/@-20.3356679,-40.2956619,17z/data=!3m1!4b1!4m6!3m5!1s0xb8163b99d58e9b:0x1c031d1f838193bb!8m2!3d-20.3356679!4d-40.2956619!16s%2Fg%2F1s04cgrv0?entry=ttu&g_ep=EgoyMDI1MDkxNS4wIKXMDSoASAFQAw%3D%3D" target="_blank" class="text-blue-300 hover:underline">Ver no Google Maps</a>`;
+            } else if (isQuoteQuery || productMatch) {
+                const product = productMatch || normalizedMessage.match(/cartão|cartões|panfleto|flyer|folder|revista|livro|convite|sacola|embalagem|banner|adesivo|poster|plotagem|placa pvc/)?.[0];
+                if (product) {
+                    const originalProductKey = Object.keys(knowledgeBase.prices).find(k => normalizeString(k) === normalizeString(product));
+                    const quantityMatch = normalizedMessage.match(/\b(\d+)\b/);
+                    
+                    if (quantityMatch) {
+                        const quantity = parseInt(quantityMatch[1], 10);
+                        const priceInfo = knowledgeBase.prices[originalProductKey];
+                        let priceMessage = `Claro! Para **${quantity} unidades de ${originalProductKey}**, temos as seguintes opções de material e acabamento:<br><br>`;
+                        for (const type in priceInfo) {
+                            const total = (priceInfo[type].unit * quantity).toFixed(2).replace('.', ',');
+                            priceMessage += `**${type}:** R$ ${total}.`;
+                            const materialDescription = knowledgeBase.materials[originalProductKey] ? knowledgeBase.materials[originalProductKey][type.toLowerCase().replace('+', ' com')] : '';
+                            if (materialDescription) {
+                                priceMessage += ` (${materialDescription})`;
+                            }
+                            priceMessage += `<br>`;
+                        }
+                        responseText = priceMessage + `<br>Qual tipo você procura? Se precisar, posso te ajudar a escolher o acabamento ideal.`;
+                    } else {
+                        responseText = `Claro! Para te dar um orçamento de **${originalProductKey}**, me diga a quantidade que você precisa.`;
+                        lastProductRequested = originalProductKey;
+                    }
+                } else {
+                    responseText = 'Claro, posso te ajudar com isso! Para te dar um orçamento preciso, me diz qual produto você gostaria (cartão, banner, adesivo), a quantidade e se você tem um prazo para a entrega.';
+                }
+            } else if (isBriefingQuery) {
+                 if (lowerCaseMessage.includes('logomarca') || lowerCaseMessage.includes('logo')) {
+                    responseText = 'Para criarmos sua logomarca, precisamos de um briefing bem detalhado. Já abri o formulário para você! É só preencher e me enviar, e eu farei uma sugestão inicial.';
+                } else {
+                    responseText = 'Claro! Para criar uma arte, preciso que você preencha um briefing. Já abri o formulário para facilitar para você.';
+                }
+                showBriefingForm();
+            } else if (technicalMatch) {
+                const originalTechnicalKey = Object.keys(knowledgeBase.technicalTerms).find(k => normalizeString(k) === technicalMatch);
+                responseText = knowledgeBase.technicalTerms[originalTechnicalKey];
+            } else if (materialMatch) {
+                const originalMaterialKey = Object.keys(knowledgeBase.materials).find(k => normalizeString(k) === materialMatch);
+                const materialInfo = knowledgeBase.materials[originalMaterialKey];
+                let suggestions = `Para **${originalMaterialKey}**, temos algumas opções bem bacanas:<br><br>`;
+                for (const type in materialInfo) {
+                    suggestions += `**${type.charAt(0).toUpperCase() + type.slice(1)}:** ${materialInfo[type]}.<br>`;
+                }
+                responseText = suggestions + `<br>Qual tipo você procura? Posso te ajudar com um orçamento também!`;
+                askForAudio = true;
+            } else if (serviceMatch) {
+                const originalServiceKey = Object.keys(knowledgeBase.services).find(k => normalizeString(k) === serviceMatch);
+                if (lowerCaseMessage.includes("camiseta") || lowerCaseMessage.includes("caneca") || lowerCaseMessage.includes("brindes")) {
+                    responseText = "Sim! Trabalhamos com a personalização de brindes como camisetas, canecas e chaveiros. Qual deles você precisa?";
+                } else if (lowerCaseMessage.includes("adesivo de parede")) {
+                    responseText = "Sim! Trabalhamos com vinil adesivo próprio para parede. Quer que eu te mostre alguns modelos e tamanhos disponíveis?";
+                } else if (lowerCaseMessage.includes("adesivo")) {
+                    responseText = "Trabalhamos com adesivos personalizados em diversos formatos e tamanhos. O vinil adesivo é o material mais comum. Para qual finalidade você precisa do adesivo?";
+                } else {
+                    responseText = `Posso te dar mais detalhes sobre a **${originalServiceKey}**! ${knowledgeBase.services[originalServiceKey]} Quer saber mais sobre algum outro serviço?`;
+                    askForAudio = true;
+                }
+            } else {
+                responseText = 'Ah, me desculpe, não entendi muito bem. Você pode me explicar de outra forma o que você precisa?';
+                expectingWhatsappNumber = true;
+            }
+            
+            if (responseText) {
+                appendMessage('ai', responseText);
+                if (askForAudio && !audioOfferMade) {
+                     audioMessage = responseText.replace(/<\/?strong>/g, '').replace(/<br>/g, ' ').replace(/<[^>]*>?/g, '');
+                     appendMessage('ai', `Você gostaria que eu enviasse essa resposta em áudio também?`);
+                     expectingAudioConfirmation = true;
+                     audioOfferMade = true;
+                }
+            }
+            
+        }, 1500);
+    };
+
+    const toggleLogoFields = () => {
+        const projectType = document.getElementById('project-type').value;
+        const logoFields = document.getElementById('logo-fields');
+        logoFields.style.display = projectType === 'Logo' ? 'block' : 'none';
+    };
+    
+    // --- LÓGICA DO CHAT E BOTÕES ---
+    sendBtn.addEventListener('click', handleSendMessage);
+    userInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSendMessage();
+    });
+
+    settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsMenu.classList.toggle('show');
+    });
+
+    document.addEventListener('click', () => {
+        if (settingsMenu.classList.contains('show')) {
+            settingsMenu.classList.remove('show');
+        }
+    });
+
+    // --- FUNÇÕES GLOBAIS (acessíveis pelo HTML) ---
+    window.handlePresentationRequest = () => {
+        appendMessage('user', 'Quero a apresentação dos serviços.');
+        showTypingIndicator();
+        setTimeout(() => {
+            removeTypingIndicator();
+            appendMessage('ai', 'Claro! Aqui está o link para nosso catálogo de serviços em PDF:<br><a href="#" target="_blank" class="text-blue-300 hover:underline">Catálogo de Serviços.pdf</a>');
+        }, 1500);
+    };
+
+    window.handleMaterialsGuide = () => {
+        appendMessage('user', 'Qual o guia de materiais?');
+        showTypingIndicator();
+        setTimeout(() => {
+            removeTypingIndicator();
+            appendMessage('ai', 'Com certeza! Preparamos um guia completo para te ajudar a escolher o melhor material para seu projeto:<br><a href="#" target="_blank" class="text-blue-300 hover:underline">Guia de Materiais.pdf</a>');
+        }, 1500);
+    };
+
+    window.handleOrderStatus = () => {
+        appendMessage('user', 'Gostaria de rastrear meu pedido.');
+        showTypingIndicator();
+        setTimeout(() => {
+            removeTypingIndicator();
+            appendMessage('ai', 'Ok! Para rastrear seu pedido, por favor, me informe o número de 9 dígitos que você recebeu por e-mail.');
+        }, 1500);
+    };
+    
+    // --- LÓGICA DOS FORMULÁRIOS ---
+    window.showBriefingForm = () => {
+        formOverlay.style.display = 'flex';
+        briefingForm.style.display = 'block';
+        quoteForm.style.display = 'none';
+        window.showFormStep(1);
+    };
+
+    window.showQuoteForm = () => {
+        formOverlay.style.display = 'flex';
+        briefingForm.style.display = 'none';
+        quoteForm.style.display = 'block';
+    };
+
+    window.closeForm = () => {
+        formOverlay.style.display = 'none';
+        briefingForm.reset();
+        quoteForm.reset();
+    };
+
+    window.showFormStep = (step) => {
+        document.querySelectorAll('.briefing-form-section').forEach(section => section.classList.remove('active'));
+        document.getElementById(`briefing-form-step-${step}`).classList.add('active');
+        
+        if (step === 4) {
+            const name = document.getElementById('client-name').value;
+            const whatsapp = document.getElementById('client-whatsapp').value;
+            const service = document.getElementById('project-type').value;
+            const description = document.getElementById('project-description').value;
+            const brandName = document.getElementById('brand-name').value;
+            const brandSlogan = document.getElementById('brand-slogan').value;
+            const targetAudience = document.getElementById('target-audience').value;
+            const desiredStyle = document.getElementById('desired-style').value;
+            const areaOfOperation = document.getElementById('area-of-operation').value;
+            const iconsSymbols = document.getElementById('icons-symbols').value;
+            const whatToAvoid = document.getElementById('what-to-avoid').value;
+            const colors = document.getElementById('project-colors').value;
+            const imageUrl = document.getElementById('reference-image-url').value;
+
+            const summaryDiv = document.getElementById('briefing-summary');
+            summaryDiv.innerHTML = `
+                <p><strong>Nome:</strong> ${name}</p>
+                <p><strong>WhatsApp:</strong> ${whatsapp}</p>
+                <p><strong>Serviço:</strong> ${service}</p>
+                ${service === 'Logo' ? `
+                    <p><strong>Nome da Marca:</strong> ${brandName || 'Não especificado'}</p>
+                    <p><strong>Slogan:</strong> ${brandSlogan || 'Não especificado'}</p>
+                    <p><strong>Área de Atuação:</strong> ${areaOfOperation || 'Não especificado'}</p>
+                    <p><strong>Público-alvo:</strong> ${targetAudience || 'Não especificado'}</p>
+                    <p><strong>Estilo Desejado:</strong> ${desiredStyle || 'Não especificado'}</p>
+                    <p><strong>Símbolos/Ícones:</strong> ${iconsSymbols || 'Não especificado'}</p>
+                    <p><strong>O que evitar:</strong> ${whatToAvoid || 'Não especificado'}</p>
+                ` : ''}
+                <p><strong>Descrição:</strong> ${description}</p>
+                <p><strong>Cores Desejadas:</strong> ${colors || 'Não especificado'}</p>
+                <p><strong>URL de Referência:</strong> ${imageUrl || 'Não especificado'}</p>
+            `;
+        }
+    };
+    
+    window.searchForProfession = () => {
+        const query = document.getElementById('profissao-input').value.toLowerCase().trim();
+        const resultsContainer = document.getElementById('search-results');
+        resultsContainer.innerHTML = '<p class="text-gray-300">Buscando modelos...</p>';
+
+        setTimeout(() => {
+            const results = driveData.filter(item => item.profession.toLowerCase().includes(query));
+            resultsContainer.innerHTML = '';
+            if (results.length > 0) {
+                results.forEach(item => {
+                    const resultEl = document.createElement('div');
+                    resultEl.className = 'search-result-item';
+                    resultEl.innerHTML = `<a href="${item.url}" target="_blank" class="flex items-center justify-between"><span>${item.name}</span><i class="fa-solid fa-external-link-alt text-gray-400"></i></a>`;
+                    resultsContainer.appendChild(resultEl);
+                });
+            } else {
+                resultsContainer.innerHTML = '<p class="text-gray-400">Nenhum modelo encontrado para essa profissão.</p>';
+            }
+        }, 1000);
+    };
+    
+    window.submitBriefingForm = async () => {
+        const name = document.getElementById('client-name').value;
+        const service = document.getElementById('project-type').value;
+        const description = document.getElementById('project-description').value;
+        const colors = document.getElementById('project-colors').value;
+        const imageUrl = document.getElementById('reference-image-url').value;
+        
+        closeForm();
+        
+        appendMessage('ai', `Obrigado, ${name}! Recebemos seu briefing para <strong>${service}</strong>.`);
+        
+        if (service === 'Logo') {
+            appendMessage('ai', `A Cypra está trabalhando na sua logomarca. Isso pode levar alguns segundos...`);
+            
+            const brandName = document.getElementById('brand-name').value;
+            const brandSlogan = document.getElementById('brand-slogan').value;
+            const targetAudience = document.getElementById('target-audience').value;
+            const desiredStyle = document.getElementById('desired-style').value;
+            const areaOfOperation = document.getElementById('area-of-operation').value;
+            const iconsSymbols = document.getElementById('icons-symbols').value;
+            const whatToAvoid = document.getElementById('what-to-avoid').value;
+            
+            try {
+                const apiKey = "";
+                
+                // Construção do "Prompt Mágico" em inglês para a IA
+                let prompt = `Minimalist logo design for a brand.`;
+                if(brandName) prompt += ` Brand Name: '${brandName}'.`;
+                if(brandSlogan) prompt += ` Slogan: '${brandSlogan}'.`;
+                if(areaOfOperation) prompt += ` Area of operation: '${areaOfOperation}'.`;
+                if(targetAudience) prompt += ` Target Audience: '${targetAudience}'.`;
+                if(desiredStyle) prompt += ` Style: '${desiredStyle}'.`;
+                if(iconsSymbols) prompt += ` Incorporate symbols like '${iconsSymbols}'.`;
+                if(whatToAvoid) prompt += ` Avoid elements like '${whatToAvoid}'.`;
+                if(description) prompt += ` Concept: '${description}'.`;
+                if(colors) prompt += ` Color palette: '${colors}'.`;
+                
+                let payload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['TEXT', 'IMAGE']
+                    },
+                };
+
+                let model = "gemini-2.5-flash-image-preview";
+                let apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+                if (imageUrl) {
+                    try {
+                        const response = await fetch(imageUrl);
+                        const imageBlob = await response.blob();
+                        const reader = new FileReader();
+                        reader.readAsDataURL(imageBlob);
+                        await new Promise(resolve => reader.onload = resolve);
+                        const base64ImageData = reader.result.split(',')[1];
+                        
+                        payload.contents[0].parts.push({
+                            inlineData: {
+                                mimeType: imageBlob.type,
+                                data: base64ImageData
+                            }
+                        });
+
+                        prompt += ` Use the provided image as a reference for style and content.`;
+
+                        payload.contents[0].parts[0].text = prompt;
+
+                    } catch (fetchError) {
+                        console.error('Erro ao buscar a imagem de referência:', fetchError);
+                        appendMessage('ai', 'Desculpe, não consegui carregar a imagem de referência. Vou tentar gerar a logo apenas com as informações de texto.');
+                    }
+                }
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data) {
+                    const base64Data = result.candidates[0].content.parts.find(p => p.inlineData).inlineData.data;
+                    const generatedImageUrl = `data:image/png;base64,${base64Data}`;
+                    
+                    appendImageMessage('ai', generatedImageUrl, 'Aqui está uma sugestão de logomarca com base no seu briefing:');
+                    appendMessage('ai', 'Gostou do resultado? Nossa equipe de criação entrará em contato com você pelo WhatsApp em breve para refinar a ideia. 🚀');
+                } else {
+                    appendMessage('ai', 'Desculpe, não consegui gerar a imagem no momento. Por favor, tente novamente mais tarde.');
+                }
+
+            } catch (error) {
+                console.error('Erro ao gerar imagem:', error);
+                appendMessage('ai', 'Ocorreu um erro ao gerar a imagem. Por favor, tente novamente mais tarde.');
+            }
+            
+        } else {
+            appendMessage('ai', `Nossa equipe de criação entrará em contato com você pelo WhatsApp em breve. 🚀`);
+        }
+    };
+
+    window.generateQuote = () => {
+        const service = document.getElementById('quote-service').value;
+        const quantity = document.getElementById('quote-quantity').value;
+        const details = document.getElementById('quote-details').value;
+        closeForm();
+        
+        // Lógica de cálculo de preço (simulada)
+        const basePrice = 120; // Preço base de exemplo
+        const finalPrice = (basePrice * (quantity / 1000)).toFixed(2).replace('.', ',');
+
+        const quoteMessage = `
+            <h3 class="font-bold text-lg mb-2">Orçamento Gerado</h3>
+            <p><strong>Serviço:</strong> ${service}</p>
+            <p><strong>Quantidade:</strong> ${quantity} unidades</p>
+            <p><strong>Detalhes:</strong> ${details || 'Nenhum'}</p>
+            <hr class="my-2 border-gray-500">
+            <p class="text-xl font-bold">Valor Estimado: R$ ${finalPrice}</p>
+            <small class="text-gray-300">Este é um valor aproximado. Um de nossos consultores confirmará o orçamento final.</small>
+        `;
+        appendMessage('ai', quoteMessage);
+    };
+
+    // Mensagem inicial
+    showTypingIndicator();
+    setTimeout(() => {
+        removeTypingIndicator();
+        appendMessage('ai', 'Olá! Seja bem-vindo à <strong>Gráfica Cypreste</strong>. Eu sou a Cypra, sua assistente virtual. Em que posso ajudar?');
+    }, 1000);
+});
+</script>
+
+</body>
+</html>
